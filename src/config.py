@@ -5,3 +5,8 @@ MODEL_KIND = "EfficientNetB0"
 LEARNING_RATE = 1e-4
 EMBEDDING_SIZE = 8
 EPOCHS = 1
+
+# Evaluation
+BATCH_SIZE_EVAL = 16
+MODEL_PATH = "model_b3_256_m1"
+k_max = 5

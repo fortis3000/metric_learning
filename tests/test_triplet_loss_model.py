@@ -80,3 +80,15 @@ def test_predict_labels_tf():
             test_indices,
         )
     )
+
+
+def test_predict_indices():
+
+    train = np.array([[0, 0, 0], [1, 1, 1]])
+    preds = np.array([[0, 0, 0], [0.9, 0.9, 0.9]])
+    answer = np.array([[0], [1]])
+
+    print(TripletLossModel.predict_indices(train, preds))
+    assert np.all(
+        np.equal(TripletLossModel.predict_indices(train, preds), answer)
+    )

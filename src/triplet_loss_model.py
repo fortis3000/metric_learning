@@ -40,7 +40,7 @@ class TripletLossModel:
         )
 
         logger.debug(
-            f"Model test embeddings of shape {self.train_embeddings.shape} were set."
+            f"Model train embeddings of shape {self.train_embeddings.shape} were set."
         )
         return True
 
@@ -52,8 +52,12 @@ class TripletLossModel:
 
         return self._predict_dataset(ds, is_labeled=is_labeled)
 
+    @staticmethod
     def predict_indices(
-        self, embeddings: tf.Tensor, bsize: int = 16, k: int = 1
+        embeddings_train: tf.Tensor,
+        embeddings_test: tf.Tensor,
+        bsize: int = 16,
+        k: int = 1,
     ):
         """Calculate train set indices for each embedding.
 
@@ -63,17 +67,17 @@ class TripletLossModel:
         # memory issue, calcualting predicted labels step-by-step
         labels_test_indices = []
 
-        n_batches = embeddings.shape[0] // bsize
+        n_batches = embeddings_test.shape[0] // bsize
 
-        if embeddings.shape[0] % bsize > 0:
+        if embeddings_test.shape[0] % bsize > 0:
             n_batches += 1
 
         for i in range(n_batches):
             dists, indices = tf.math.top_k(
                 -1
                 * compute_distances_no_loops(
-                    self.train_embeddings,
-                    embeddings[i * bsize : (i + 1) * bsize, :],
+                    embeddings_train,
+                    embeddings_test[i * bsize : (i + 1) * bsize, :],
                 ),
                 k=k,
                 sorted=False,
@@ -85,14 +89,16 @@ class TripletLossModel:
         return labels_test_indices
 
     @staticmethod
-    def predict_labels_np(labels_train, labels_test_indices: tf.Tensor):
+    def predict_labels_np(
+        labels_train: np.array, labels_test_indices: np.array
+    ):
         logger.debug("Predicting labels")
         return labels_train[labels_test_indices]
 
     @staticmethod
     def predict_labels_tf(labels_train, labels_test_indices: tf.Tensor):
         logger.debug("Predicting labels")
-        return tf.gather(labels_train, labels_test_indices).numpy()
+        return tf.gather(labels_train, labels_test_indices)
 
     # TODO: fix it
     @staticmethod
@@ -110,13 +116,15 @@ class TripletLossModel:
             labels_true.shape[0] == labels_pred.shape[0]
         ), "Provide sequences of the same length"
 
-        mask = np.zeros(labels_pred.shape, dtype=np.int8)
+        mask = np.zeros(labels_pred.shape, dtype=bool)
 
+        # several pictures in train of the same class
         for i in range(len(labels_pred)):
             for j in range(len(labels_pred[i])):
                 if labels_pred[i, j] == labels_true[i]:
-                    mask[i, j] = 1
+                    mask[i, j] = True
 
+        mask = np.any(mask, axis=-1).astype(np.int8)
         return np.sum(mask) / len(labels_true)
 
     @staticmethod

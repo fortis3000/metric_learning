@@ -15,7 +15,7 @@ def input_preprocess_train(record):
     """
     Preprocess image and labels after TFRecords reading.
     """
-    label = tf.cast(record["class_id"], tf.int64)
+    label = tf.cast(record["super_class_id"], tf.int64)
     image = decode_image(record["image"])
     return image, label
 
