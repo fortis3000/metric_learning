@@ -9,6 +9,7 @@ trues = np.array([1, 1, 1])
 
 preds1d = np.array([[1], [1], [1]])
 
+
 # Labels truth only 1d
 def test_get_accuracy_np():
     assert TripletLossModel.get_accuracy_np(trues, preds) == 1
@@ -88,7 +89,7 @@ def test_predict_indices():
     preds = np.array([[0, 0, 0], [0.9, 0.9, 0.9]])
     answer = np.array([[0], [1]])
 
-    print(TripletLossModel.predict_indices(train, preds))
+    logger.debug(TripletLossModel.predict_indices(train, preds))
     assert np.all(
         np.equal(TripletLossModel.predict_indices(train, preds), answer)
     )

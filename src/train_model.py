@@ -2,6 +2,7 @@ import os
 import shutil
 import tensorflow as tf
 import tensorflow_datasets as tfds
+import tensorflow_addons as tfa
 
 from src.config_logging import logger
 from src.config import (
@@ -25,16 +26,18 @@ def train_model(
     model = build_metric_learning_model()
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE),
-        loss=batch_hard_triplet_loss,
+        loss=tfa.losses.TripletHardLoss(
+            margin=1, soft=False, distance_metric="L2"
+        ),
     )
 
     callbacks = [
         tf.keras.callbacks.ReduceLROnPlateau(
-            monitor="val_loss", patience=3, verbose=1
+            monitor="val_loss", patience=5, verbose=1
         ),
         tf.keras.callbacks.EarlyStopping(
             monitor="val_loss",
-            patience=5,
+            patience=10,
             verbose=1,
             restore_best_weights=True,
         ),
