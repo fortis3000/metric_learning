@@ -2,7 +2,8 @@ import tensorflow as tf
 from tensorflow.keras.applications import *
 import tensorflow.keras as k
 
-from src.config import IMG_SIZE, MODEL_KIND, EMBEDDING_SIZE
+from src.config import MODEL_KIND, EMBEDDING_SIZE, IMG_SIZE
+
 
 models_dict = {
     "EfficientNetB0": EfficientNetB0,

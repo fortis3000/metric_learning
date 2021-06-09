@@ -40,7 +40,8 @@ class TripletLossModel:
         )
 
         logger.debug(
-            f"Model train embeddings of shape {self.train_embeddings.shape} were set."
+            f"Model train embeddings of shape {self.train_embeddings.shape}"
+            "were set."
         )
         return True
 
@@ -118,14 +119,23 @@ class TripletLossModel:
 
         mask = np.zeros(labels_pred.shape, dtype=bool)
 
-        # several pictures in train of the same class
-        for i in range(len(labels_pred)):
-            for j in range(len(labels_pred[i])):
-                if labels_pred[i, j] == labels_true[i]:
-                    mask[i, j] = True
+        if tf.rank(labels_pred) == 2:
+            for i in range(labels_pred.shape[0]):
+                for j in range(labels_pred.shape[1]):
+                    if labels_pred[i, j] == labels_true[i]:
+                        mask[i, j] = True
 
-        mask = np.any(mask, axis=-1).astype(np.int8)
-        return np.sum(mask) / len(labels_true)
+            # could be several pictures in train of the same class
+            mask = np.any(mask, axis=-1)
+
+        elif tf.rank(labels_pred) == 1:
+            for i in range(labels_pred.shape[0]):
+                if labels_pred[i] == labels_true[i]:
+                    mask[i] = True
+        else:
+            raise IndexError("Too many dimensions")
+
+        return np.sum(mask.astype(np.int8)) / len(labels_true)
 
     @staticmethod
     def get_accuracy_tf(labels_true, labels_pred):

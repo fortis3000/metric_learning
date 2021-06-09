@@ -1,4 +1,5 @@
 import tensorflow as tf
+from src.config import MARGIN
 
 
 def _pairwise_distances(embeddings, squared=False):
@@ -29,7 +30,7 @@ def _pairwise_distances(embeddings, squared=False):
     )
 
     # Because of computation errors, some distances might be negative so we put everything >= 0.0
-    distances = tf.maximum(distances, 0.0)
+    distances = tf.cast(tf.maximum(distances, 0.0), dtype=tf.float64)
 
     if not squared:
         # Because the gradient of sqrt is infinite when distances == 0.0 (ex: on the diagonal)
@@ -120,7 +121,7 @@ def _get_triplet_mask(labels):
     return mask
 
 
-def batch_hard_triplet_loss(labels, embeddings, margin=1, squared=False):
+def batch_hard_triplet_loss(labels, embeddings, margin=MARGIN, squared=False):
     """Build the triplet loss over a batch of embeddings.
     For each anchor, we get the hardest positive and hardest negative to form a triplet.
     Args:
@@ -138,7 +139,7 @@ def batch_hard_triplet_loss(labels, embeddings, margin=1, squared=False):
     # For each anchor, get the hardest positive
     # First, we need to get a mask for every valid positive (they should have same label)
     mask_anchor_positive = _get_anchor_positive_triplet_mask(labels)
-    mask_anchor_positive = tf.compat.v1.to_float(mask_anchor_positive)
+    mask_anchor_positive = tf.cast(mask_anchor_positive, dtype=tf.float64)
 
     # We put to 0 any element where (a, p) is not valid (valid if a != p and label(a) == label(p))
     anchor_positive_dist = tf.multiply(mask_anchor_positive, pairwise_dist)
@@ -154,7 +155,7 @@ def batch_hard_triplet_loss(labels, embeddings, margin=1, squared=False):
     # For each anchor, get the hardest negative
     # First, we need to get a mask for every valid negative (they should have different labels)
     mask_anchor_negative = _get_anchor_negative_triplet_mask(labels)
-    mask_anchor_negative = tf.compat.v1.to_float(mask_anchor_negative)
+    mask_anchor_negative = tf.cast(mask_anchor_negative, dtype=tf.float64)
 
     # We add the maximum value in each row to the invalid negatives (label(a) == label(n))
     max_anchor_negative_dist = tf.reduce_max(

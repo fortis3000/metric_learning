@@ -1,9 +1,10 @@
+import os
 import pandas as pd
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
 from src.config_logging import logger
-from src.config import BATCH_SIZE_EVAL, MODEL_PATH, k_max
+from src.config import BATCH_SIZE_EVAL, MODEL_PATH_PREDICT, k_max
 from src.dataset import init_dataset
 from src.triplet_loss_model import TripletLossModel
 
@@ -36,7 +37,7 @@ if __name__ == "__main__":
         drop_reminder=False,
     )
 
-    backbone = tf.keras.models.load_model(MODEL_PATH, compile=False)
+    backbone = tf.keras.models.load_model(MODEL_PATH_PREDICT, compile=False)
 
     model = TripletLossModel(model=backbone)
     model.set_train_from_ds(train_ds, is_labeled=True)
@@ -46,7 +47,6 @@ if __name__ == "__main__":
     embeddings_test, labels_test_true = model.predict_embeddings(
         test_ds, is_labeled=True
     )
-    labels_test_true = labels_test_true.numpy()
 
     logger.info(f"Embeddings test shape: {embeddings_test.shape}")
 
@@ -65,15 +65,41 @@ if __name__ == "__main__":
     del embeddings_test
     del indices_test_pred
 
+    pd.DataFrame(labels_test_pred.numpy()).to_csv(
+        os.path.join(MODEL_PATH_PREDICT, "preds.csv")
+    )
+    pd.DataFrame(labels_test_true.numpy()).to_csv(
+        os.path.join(MODEL_PATH_PREDICT, "trues.csv")
+    )
+
     # confusion matrix for k=1
-    pd.DataFrame(
-        tf.math.confusion_matrix(
-            labels_test_true, labels_test_pred[:, 0]
-        ).numpy()
-    ).to_csv("confusion_matrix.csv")
+    conf_matrix = tf.math.confusion_matrix(
+        labels_test_true, labels_test_pred[:, 0]
+    )
+    pd.DataFrame(conf_matrix.numpy()).to_csv(
+        os.path.join(MODEL_PATH_PREDICT, "confusion_matrix.csv")
+    )
+
+    true_diag = tf.linalg.diag_part(conf_matrix, k=0)
+
+    true_sum = tf.reduce_sum(conf_matrix, axis=1)
+    pred_sum = tf.reduce_sum(conf_matrix, axis=0)
+
+    precision = true_diag / pred_sum
+    recall = true_diag / true_sum
+    f1_score = 2 * ((precision * recall) / (precision + recall))
+
+    out_metrics = {
+        "precision": precision.numpy().tolist(),
+        "recall": recall.numpy().tolist(),
+        "f1_scores": f1_score.numpy().tolist(),
+        "conf_matrix": conf_matrix.numpy().tolist(),
+    }
+
+    logger.info(out_metrics)
 
     accuracy_1 = TripletLossModel.get_accuracy_cycle(
-        labels_test_pred[:, 0], labels_test_pred
+        labels_test_true, labels_test_pred[:, 0]
     )
     accuracy_k = TripletLossModel.get_accuracy_cycle(
         labels_test_true, labels_test_pred

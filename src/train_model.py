@@ -1,7 +1,17 @@
+import os
+import shutil
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-from src.config import BATCH_SIZE, LEARNING_RATE, EPOCHS
+from src.config_logging import logger
+from src.config import (
+    DATAPATH,
+    BATCH_SIZE,
+    LEARNING_RATE,
+    EPOCHS,
+    MODEL_PATH,
+    AUGMENT,
+)
 from src.dataset import init_dataset
 from src.triplet_loss import batch_hard_triplet_loss
 from src.model import build_metric_learning_model
@@ -39,8 +49,12 @@ def train_model(
 
 
 def main():
-    datasets = tfds.load("StanfordOnlineProducts", data_dir="data")
+    datasets = tfds.load("StanfordOnlineProducts", data_dir=DATAPATH)
     train_dataset, test_dataset = datasets["train"], datasets["test"]
+
+    os.mkdir(MODEL_PATH)
+    for f in [r"src/config.py", r"src/train_model.py"]:
+        shutil.copy2(f, MODEL_PATH)
 
     train_ds = init_dataset(
         train_dataset,
@@ -48,7 +62,7 @@ def main():
         buffer_size=BATCH_SIZE * 2,
         seed=42,
         shuffle=True,
-        augment=True,
+        augment=AUGMENT,
         repeat=False,
         drop_reminder=False,
     )
@@ -65,9 +79,9 @@ def main():
     )
 
     backbone = train_model(train_ds, test_ds, epochs=EPOCHS)
-    backbone.save("model")
+    backbone.save(os.path.join(MODEL_PATH, "model"))
 
-    print("Model trained successfully")
+    logger.info("Model trained successfully")
 
 
 if __name__ == "__main__":
